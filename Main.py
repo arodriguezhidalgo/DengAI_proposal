@@ -17,6 +17,7 @@ feature_vector = ['reanalysis_specific_humidity_g_per_kg',
                   'week_start_date',
                   'city',
                   'total_cases']
+verbose = False;
 
 features = read_data('dengue_features_train.csv');
 labels = read_data('dengue_labels_train.csv');
@@ -92,7 +93,7 @@ for id_city in features.city.unique():
     n_splits = 5 # TimeSeriesSplits number of splits
     
     # We train a selection of models
-    reg_list =['KNN'] #['RandomForest','KNN','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
+    reg_list = ['RandomForest','KNN','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
     model = {};
     model_scores = {};
     for model_name in reg_list:
@@ -107,10 +108,12 @@ for id_city in features.city.unique():
     
         from sklearn.metrics import mean_absolute_error
         if logarithmic_labels == True:
-            model_scores[model_name] = model[model_name].plot_results(np.exp(y_test), np.exp(y_pred_test), mean_absolute_error);
+            model_scores[model_name] = model[model_name].plot_results(np.exp(y_test), np.exp(y_pred_test), mean_absolute_error, verbose);
         else:
-            model_scores[model_name] = model[model_name].plot_results(y_test, y_pred_test, mean_absolute_error)
-        plt.title(model_name);
+            model_scores[model_name] = model[model_name].plot_results(y_test, y_pred_test, mean_absolute_error, verbose)
+            
+        if verbose == True: 
+            plt.title(model_name);
     
     '''
     Using the previous models we train a meta-Regressor, which we hope it produces
@@ -127,21 +130,23 @@ for id_city in features.city.unique():
     if logarithmic_labels == True:
         print('Train error: {}'.format(mean_absolute_error(np.exp(y_train), np.exp(y_pred_train))))
         print('Test error: {}'.format(mean_absolute_error(np.exp(y_test), np.exp(y_pred_test))))
-        plt.subplot(211)
-        plt.plot(np.exp(y_pred_train))
-        plt.plot(np.exp(y_train))
-        plt.subplot(212)
-        plt.plot(np.exp(y_pred_test))
-        plt.plot(np.exp(y_test))
+        if verbose == True:
+            plt.subplot(211)
+            plt.plot(np.exp(y_pred_train))
+            plt.plot(np.exp(y_train))
+            plt.subplot(212)
+            plt.plot(np.exp(y_pred_test))
+            plt.plot(np.exp(y_test))
     else:
         print('Train error: {}'.format(mean_absolute_error(y_train, y_pred_train)))
         print('Test error: {}'.format(mean_absolute_error(y_test, y_pred_test)))
-        plt.subplot(211)
-        plt.plot(y_pred_train)
-        plt.plot(y_train)
-        plt.subplot(212)
-        plt.plot(y_pred_test)
-        plt.plot(y_test)
+        if verbose == True:
+            plt.subplot(211)
+            plt.plot(y_pred_train)
+            plt.plot(y_train)
+            plt.subplot(212)
+            plt.plot(y_pred_test)
+            plt.plot(y_test)
 
 
     
@@ -179,8 +184,10 @@ for i_row in x_test_real.index:
     x_aux = aux[[col for col in aux.index if col not in ['city','total_cases','total_cases_LOG','diff','pos_neg']]]
     x_aux = np.expand_dims(x_aux, axis=0)
     
-    #if aux['city'] == 'sj':
-    model_aux = city_models[aux['city']]['meta_sub']['KNN']
+    # We always use the model that produces minimum test score for each city.    
+    model_name = min(city_models[aux['city']]['meta_sub_scores'], key=city_models[aux['city']]['meta_sub_scores'].get);
+    model_aux = city_models[aux['city']]['meta_sub'][model_name]
+    print('**C:{}. M:{}. Test:{}'.format(aux['city'],model_name,city_models[aux['city']]['meta_sub_scores'][model_name]))
     if logarithmic_labels == True:
         y_aux = int(np.ceil(np.exp(model_aux.return_prediction(x_aux)[0])))
     else:
@@ -200,3 +207,4 @@ for i_row in x_test_real.index:
 output_df.to_csv('output.csv', index = False)
 plt.figure()
 plt.plot(outcome)
+print('Code finished.')
