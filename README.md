@@ -1,5 +1,8 @@
 # DengAI_proposal
-v1.4
+v1.4a:
+* Playing with some features generated with TSNE and Polynomia.
+
+v1.4:
 * Added more options to the ML Regressor params.
 * Included analysis about the correlation of features and total_cases. We select the top 7. 
   * C:sj. M:AdaBoost. Test:18.021608985610648
