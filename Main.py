@@ -10,12 +10,13 @@ def read_data(data_file):
 
 logarithmic_labels = False;
 feature_selection = True;
-feature_vector = ['reanalysis_specific_humidity_g_per_kg',
+feature_vector = ['weekofyear',
+                  'month',
+                  'inverse_year',
+                  'reanalysis_specific_humidity_g_per_kg',
                   'reanalysis_dew_point_temp_k',
                   'station_avg_temp_c',
-                  'station_min_temp_c',
-                  'week_start_date',
-                  'city',
+                  'reanalysis_max_air_temp_k',
                   'total_cases']
 verbose = False;
 
@@ -32,8 +33,7 @@ for id_city in features.city.unique():
     city_data = features[features['city'] == id_city]
     
     
-    if feature_selection == True:        
-        city_data = city_data[feature_vector]
+
     # Data imputation
     missing = {}
     for col in city_data:
@@ -52,14 +52,18 @@ for id_city in features.city.unique():
         city_data[col].interpolate(inplace=True)
         
     # We create some new features that might be interesting.
-    city_data['USER_month'] = city_data.apply(lambda x: int(x['week_start_date'][5:7]), axis=1);
-    city_data['USER_day'] = city_data.apply(lambda x: int(x['week_start_date'][8:10]), axis=1);
+    city_data['month'] = city_data.apply(lambda x: int(x['week_start_date'][5:7]), axis=1);
+    city_data['day'] = city_data.apply(lambda x: int(x['week_start_date'][8:10]), axis=1);
+    city_data['inverse_year'] = city_data['year'].apply(lambda x: 1/x);
     city_data.pop('week_start_date');
     city_data.pop('city');
     
     # We define the four seasons from the North hemishpere.    
     from DengAI_utils import season
-    city_data['USER_season'] = city_data['USER_month'].apply(season);
+    city_data['season'] = city_data['month'].apply(season);
+    
+    if feature_selection == True:        
+        city_data = city_data[feature_vector]
     
     # We generate logarithmic labels, which might be useful to model seasonality
     city_data['total_cases_LOG'] = np.log(city_data['total_cases'])
@@ -166,14 +170,18 @@ for col in x_test_real:
         
 for col in missing.keys():
     x_test_real[col].interpolate(inplace=True)
+    
+x_test_real['month'] = x_test_real.apply(lambda x: int(x['week_start_date'][5:7]), axis=1);
+x_test_real['day'] = x_test_real.apply(lambda x: int(x['week_start_date'][8:10]), axis=1);
+x_test_real['inverse_year'] = x_test_real['year'].apply(lambda x: 1/x);
+x_test_real['season'] = x_test_real['month'].apply(season);
 
 if feature_selection == True:        
-    extra_column = x_test_real[['year','weekofyear']];
+    extra_column = x_test_real[['year','weekofyear','city']];
     x_test_real = x_test_real[[i for i in feature_vector if i not in ['total_cases']]]
-x_test_real['USER_month'] = x_test_real.apply(lambda x: int(x['week_start_date'][5:7]), axis=1);
-x_test_real['USER_day'] = x_test_real.apply(lambda x: int(x['week_start_date'][8:10]), axis=1);
-x_test_real.pop('week_start_date');
-x_test_real['USER_season'] = x_test_real['USER_month'].apply(season);
+
+
+
 
 
 #city_data = x_test_real[x_test_real['city'] == id_city]
@@ -185,19 +193,17 @@ for i_row in x_test_real.index:
     x_aux = np.expand_dims(x_aux, axis=0)
     
     # We always use the model that produces minimum test score for each city.    
-    model_name = min(city_models[aux['city']]['meta_sub_scores'], key=city_models[aux['city']]['meta_sub_scores'].get);
-    model_aux = city_models[aux['city']]['meta_sub'][model_name]
-    print('**C:{}. M:{}. Test:{}'.format(aux['city'],model_name,city_models[aux['city']]['meta_sub_scores'][model_name]))
+    model_name = min(city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'], key=city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'].get);
+    model_aux = city_models[extra_column.iloc[i_row]['city']]['meta_sub'][model_name]
+    print('**C:{}. M:{}. Test:{}'.format(extra_column.iloc[i_row]['city'],model_name,city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'][model_name]))
     if logarithmic_labels == True:
         y_aux = int(np.ceil(np.exp(model_aux.return_prediction(x_aux)[0])))
     else:
         y_aux = int(np.ceil(model_aux.return_prediction(x_aux)[0]))
         
-        '''
-        EL AÑO MEJOR RECUPERARLO DEL FICHERO DE MUESTRA, PARA ASÍ EVITAR TENER QUE INTRODUCIRLO
-        EN EL VECTOR DE FEATURES.'''
+
     output_df = output_df.append({   
-                          'city':         aux['city'],
+                          'city':         extra_column.iloc[i_row]['city'],
                           'year':        extra_column.iloc[i_row]['year'],#aux['year'],
                           'weekofyear':  extra_column.iloc[i_row]['weekofyear'],
                           'total_cases': y_aux
