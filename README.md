@@ -1,10 +1,18 @@
 # DengAI_proposal
+v1.4
+* Added more options to the ML Regressor params.
+* Included analysis about the correlation of features and total_cases. We select the top 7. 
+  * C:sj. M:AdaBoost. Test:18.021608985610648
+  * C:iq. M:KernelRidge. Test:4.676544254552
+  * DRIVENDATA: 
+
 v1.3:
 * Since we observe that there is a strong inverse correlation between the year and total_cases, we introduce inverse_year which is computed as 1/year.
 * Included analysis about the correlation of features and total_cases. We select the top 7. 
   * C:sj. M:RandomForest. Test:17.260034414332367
   * C:iq. M:KernelRidge. Test:4.676544254552
   * DRIVENDATA: 26.7764
+
 v1.2: 
 * Season+Manual feature selection according to: http://drivendata.co/blog/dengue-benchmark/
   * C:sj. M:KernelRidge. Test:20.6502157735127
