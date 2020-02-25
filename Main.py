@@ -7,6 +7,17 @@ def read_data(data_file):
     data_structure = pd.read_csv(os.path.join('data',data_file))
     return data_structure
 
+
+logarithmic_labels = False;
+feature_selection = True;
+feature_vector = ['reanalysis_specific_humidity_g_per_kg',
+                  'reanalysis_dew_point_temp_k',
+                  'station_avg_temp_c',
+                  'station_min_temp_c',
+                  'week_start_date',
+                  'city',
+                  'total_cases']
+
 features = read_data('dengue_features_train.csv');
 labels = read_data('dengue_labels_train.csv');
 print('Training data readed!')
@@ -14,10 +25,14 @@ print('Training data readed!')
 # We mix features and labels in a single dataset for commodity
 features['total_cases']=labels['total_cases']
 
+
 city_models = {}
 for id_city in features.city.unique():
     city_data = features[features['city'] == id_city]
-     
+    
+    
+    if feature_selection == True:        
+        city_data = city_data[feature_vector]
     # Data imputation
     missing = {}
     for col in city_data:
@@ -61,7 +76,11 @@ for id_city in features.city.unique():
     
     
     x_train = city_data[[col for col in city_data.columns if col not in ['total_cases','total_cases_LOG','diff','pos_neg']]]
-    y_train = city_data['total_cases_LOG']
+    if logarithmic_labels == True:
+        y_train = city_data['total_cases_LOG']
+    else: 
+        y_train = city_data['total_cases']
+        
     i_test = int(np.round(len(x_train.index))*.9); # 10 per cent used for test in any dataset
     
     x_test = x_train.iloc[i_test:]
@@ -73,7 +92,7 @@ for id_city in features.city.unique():
     n_splits = 5 # TimeSeriesSplits number of splits
     
     # We train a selection of models
-    reg_list = ['RandomForest','KNN','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
+    reg_list =['KNN'] #['RandomForest','KNN','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
     model = {};
     model_scores = {};
     for model_name in reg_list:
@@ -87,30 +106,43 @@ for id_city in features.city.unique():
         y_pred_test  = model[model_name].return_prediction(x_test)
     
         from sklearn.metrics import mean_absolute_error
-        model_scores[model_name] = model[model_name].plot_results(np.exp(y_test), np.exp(y_pred_test), mean_absolute_error)
+        if logarithmic_labels == True:
+            model_scores[model_name] = model[model_name].plot_results(np.exp(y_test), np.exp(y_pred_test), mean_absolute_error);
+        else:
+            model_scores[model_name] = model[model_name].plot_results(y_test, y_pred_test, mean_absolute_error)
         plt.title(model_name);
     
     '''
     Using the previous models we train a meta-Regressor, which we hope it produces
     better results as a combination of the previous systems.
     '''
-    y_pred_train = np.zeros_like(y_train)
-    y_pred_test = np.zeros_like(y_test)
+    y_pred_train = np.zeros_like(y_train, dtype=float)
+    y_pred_test = np.zeros_like(y_test, dtype=float)
     for model_name in reg_list:
         y_pred_train += model[model_name].return_prediction(x_train)
         y_pred_test  += model[model_name].return_prediction(x_test)
     
     y_pred_train /= len(reg_list);
     y_pred_test /= len(reg_list);
-    print('Train error: {}'.format(mean_absolute_error(np.exp(y_train), np.exp(y_pred_train))))
-    print('Test error: {}'.format(mean_absolute_error(np.exp(y_test), np.exp(y_pred_test))))
-    
-    plt.subplot(211)
-    plt.plot(np.exp(y_pred_train))
-    plt.plot(np.exp(y_train))
-    plt.subplot(212)
-    plt.plot(np.exp(y_pred_test))
-    plt.plot(np.exp(y_test))
+    if logarithmic_labels == True:
+        print('Train error: {}'.format(mean_absolute_error(np.exp(y_train), np.exp(y_pred_train))))
+        print('Test error: {}'.format(mean_absolute_error(np.exp(y_test), np.exp(y_pred_test))))
+        plt.subplot(211)
+        plt.plot(np.exp(y_pred_train))
+        plt.plot(np.exp(y_train))
+        plt.subplot(212)
+        plt.plot(np.exp(y_pred_test))
+        plt.plot(np.exp(y_test))
+    else:
+        print('Train error: {}'.format(mean_absolute_error(y_train, y_pred_train)))
+        print('Test error: {}'.format(mean_absolute_error(y_test, y_pred_test)))
+        plt.subplot(211)
+        plt.plot(y_pred_train)
+        plt.plot(y_train)
+        plt.subplot(212)
+        plt.plot(y_pred_test)
+        plt.plot(y_test)
+
 
     
     city_models[id_city] = {};
@@ -130,6 +162,9 @@ for col in x_test_real:
 for col in missing.keys():
     x_test_real[col].interpolate(inplace=True)
 
+if feature_selection == True:        
+    extra_column = x_test_real[['year','weekofyear']];
+    x_test_real = x_test_real[[i for i in feature_vector if i not in ['total_cases']]]
 x_test_real['USER_month'] = x_test_real.apply(lambda x: int(x['week_start_date'][5:7]), axis=1);
 x_test_real['USER_day'] = x_test_real.apply(lambda x: int(x['week_start_date'][8:10]), axis=1);
 x_test_real.pop('week_start_date');
@@ -145,14 +180,23 @@ for i_row in x_test_real.index:
     x_aux = np.expand_dims(x_aux, axis=0)
     
     #if aux['city'] == 'sj':
-    model_aux = city_models[aux['city']]['meta_sub']['AdaBoost']
-    y_aux = int(np.ceil(np.exp(model_aux.return_prediction(x_aux)[0])))
-    output_df = output_df.append({   'city':         aux['city'],
-                          'year':        aux['year'],
-                          'weekofyear':  aux['weekofyear'],
+    model_aux = city_models[aux['city']]['meta_sub']['KNN']
+    if logarithmic_labels == True:
+        y_aux = int(np.ceil(np.exp(model_aux.return_prediction(x_aux)[0])))
+    else:
+        y_aux = int(np.ceil(model_aux.return_prediction(x_aux)[0]))
+        
+        '''
+        EL AÑO MEJOR RECUPERARLO DEL FICHERO DE MUESTRA, PARA ASÍ EVITAR TENER QUE INTRODUCIRLO
+        EN EL VECTOR DE FEATURES.'''
+    output_df = output_df.append({   
+                          'city':         aux['city'],
+                          'year':        extra_column.iloc[i_row]['year'],#aux['year'],
+                          'weekofyear':  extra_column.iloc[i_row]['weekofyear'],
                           'total_cases': y_aux
                       }, ignore_index = True)
     outcome.append(y_aux)
 #    x_aux = 
 output_df.to_csv('output.csv', index = False)
+plt.figure()
 plt.plot(outcome)
