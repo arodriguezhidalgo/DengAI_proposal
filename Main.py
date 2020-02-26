@@ -193,7 +193,7 @@ for i_row in x_test_real.index:
     x_aux = np.expand_dims(x_aux, axis=0)
     
     # We always use the model that produces minimum test score for each city.    
-    model_name = min(city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'], key=city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'].get);
+    model_name = 'KNN';# min(city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'], key=city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'].get);
     model_aux = city_models[extra_column.iloc[i_row]['city']]['meta_sub'][model_name]
     print('**C:{}. M:{}. Test:{}'.format(extra_column.iloc[i_row]['city'],model_name,city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'][model_name]))
     if logarithmic_labels == True:

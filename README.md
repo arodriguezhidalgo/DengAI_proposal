@@ -1,4 +1,10 @@
 # DengAI_proposal
+v1.4b:
+* Same than v1.4 but only using KNN.
+  * C:sj. M:KNN. Test:21.446143181514252
+  * C:iq. M:KNN. Test:4.859615384615385
+  * DRIVENDATA: 25.6587
+
 v1.4a:
 * Playing with some features generated with TSNE and Polynomia.
 
@@ -7,7 +13,7 @@ v1.4:
 * Included analysis about the correlation of features and total_cases. We select the top 7. 
   * C:sj. M:AdaBoost. Test:18.021608985610648
   * C:iq. M:KernelRidge. Test:4.676544254552
-  * DRIVENDATA: 
+  * DRIVENDATA: 26.7212
 
 v1.3:
 * Since we observe that there is a strong inverse correlation between the year and total_cases, we introduce inverse_year which is computed as 1/year.
