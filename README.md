@@ -1,6 +1,15 @@
 # DengAI_proposal
+v1.5b:
+* Decided to remove Adaboost from the pool. It seems to overfit strongly to data.
+* Included MLP and GradientBoosting in the regressor pool.
+  * C:sj. M:GradientBoosting. Test:17.1457515251135
+  * C:iq. M:MLP. Test:4.345991318996502
+  * DRIVENDATA: 28.3389
+
 v1.5a:
 * Bigger learning rate in AdaBoost.
+  * C:sj. M:AdaBoost. Test:17.627599802242994
+  * C:iq. M:KNN. Test:4.6739010989011
 
 v1.5:
 * Included new features computed as polynomia from the previously selected ones.
