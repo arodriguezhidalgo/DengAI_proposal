@@ -1,4 +1,6 @@
 # DengAI_proposal
+v1.5a:
+* Bigger learning rate in AdaBoost.
 
 v1.5:
 * Included new features computed as polynomia from the previously selected ones.
