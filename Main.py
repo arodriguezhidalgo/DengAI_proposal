@@ -97,7 +97,7 @@ for id_city in features.city.unique():
     n_splits = 5 # TimeSeriesSplits number of splits
     
     # We train a selection of models
-    reg_list = ['RandomForest','KNN','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
+    reg_list = ['KNN']#['RandomForest','KNN','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
     model = {};
     model_scores = {};
     for model_name in reg_list:

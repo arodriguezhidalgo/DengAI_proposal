@@ -1,4 +1,9 @@
 # DengAI_proposal
+v1.4c:
+* Same than v1.4 but only using KNN. More neighbors in the Regressor.
+  * C:sj. M:KNN. Test:21.446143181514252
+  * C:iq. M:KNN. Test:4.666208791208792
+
 v1.4b:
 * Same than v1.4 but only using KNN.
   * C:sj. M:KNN. Test:21.446143181514252
