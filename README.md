@@ -1,4 +1,12 @@
 # DengAI_proposal
+
+v1.5:
+* Included new features computed as polynomia from the previously selected ones.
+* We need to select features for each of the cities. Apparently, feature correlation is different for the two scenarios under analysis.
+  * C:sj. M:AdaBoost. Test:17.65192668194498
+  * C:iq. M:KNN. Test: 4.6739010989011
+  * DRIVENDATA: 30.4904
+
 v1.4c:
 * Same than v1.4 but only using KNN. More neighbors in the Regressor.
   * C:sj. M:KNN. Test:21.446143181514252

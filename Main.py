@@ -29,12 +29,17 @@ features['total_cases']=labels['total_cases']
 
 
 city_models = {}
+'''
+We process information for each city separatedly.
+'''
 for id_city in features.city.unique():
     city_data = features[features['city'] == id_city]
     
-    
-
-    # Data imputation
+    '''
+    ***************************************************************************
+    Data imputation
+    ***************************************************************************
+    '''
     missing = {}
     for col in city_data:
         missing_no = city_data[col].isna().sum()
@@ -51,19 +56,68 @@ for id_city in features.city.unique():
     for col in missing.keys():
         city_data[col].interpolate(inplace=True)
         
-    # We create some new features that might be interesting.
+    '''
+    ***************************************************************************
+    Feature extraction
+    ***************************************************************************
+    '''
+    '''
+    We hand-craft some new features that might be interesting.
+    '''
     city_data['month'] = city_data.apply(lambda x: int(x['week_start_date'][5:7]), axis=1);
     city_data['day'] = city_data.apply(lambda x: int(x['week_start_date'][8:10]), axis=1);
     city_data['inverse_year'] = city_data['year'].apply(lambda x: 1/x);
     city_data.pop('week_start_date');
     city_data.pop('city');
     
-    # We define the four seasons from the North hemishpere.    
+    '''
+    We define the four seasons from the North hemishpere.    
+    '''
     from DengAI_utils import season
     city_data['season'] = city_data['month'].apply(season);
     
     if feature_selection == True:        
         city_data = city_data[feature_vector]
+
+    '''
+    We compute some polynomial features, since our analysis in jupyter showed
+    that this might produce features with stronger correlations respecting to
+    labels.
+    '''      
+    from ML_utils.FeatureExtraction import FeatureExtraction
+    feature_extractor = FeatureExtraction();
+    feature_extractor.polynomial(9);
+    feature_extractor.fit(city_data[[i for i in city_data.columns if i not in ['total_cases']]])
+    poly_feat = pd.DataFrame(feature_extractor.transform(city_data[[i for i in city_data.columns if i not in ['total_cases']]], 'poly'))
+    
+    poly_feat['total_cases'] = city_data['total_cases'].values;
+    '''
+    We get the correlation between the poly features and the labels. We keep 
+    the first five features and use them in our analysis.
+    '''
+    sorted_features = (poly_feat.corr()
+     .total_cases
+     .drop('total_cases') # don't compare with myself
+     .sort_values(ascending=False));
+    
+    n_poly = 1; # N of poly features to keep.
+    from sklearn.preprocessing import MinMaxScaler
+    scaler_poly = MinMaxScaler()
+    aux = scaler_poly.fit_transform( poly_feat[sorted_features[:n_poly].keys()])
+    
+    for i in range(n_poly):
+        city_data['poly_{}'.format(i)] = aux[:,i]
+        
+    # We then recompute correlation and keep only top features.
+    n_features = 10;
+    top_features = (city_data.corr()
+         .total_cases
+         .drop('total_cases') # don't compare with myself
+         .sort_values(ascending=False))[0:n_features]
+    top_features.keys()  
+    
+    
+
     
     # We generate logarithmic labels, which might be useful to model seasonality
     city_data['total_cases_LOG'] = np.log(city_data['total_cases'])
@@ -71,15 +125,15 @@ for id_city in features.city.unique():
 
     from DengAI_utils import compute_correlation
     compute_correlation(city_data);
+
+
+
+
     
     '''
     Although we are going to perform TimeSeriesSplit to perform our analysis, we
     keep some of the data out of the validation pool for testing purposes.
-    
-    Notice that we will use Logarithmic labels to perform training.
-    '''
-    
-    
+    '''   
     x_train = city_data[[col for col in city_data.columns if col not in ['total_cases','total_cases_LOG','diff','pos_neg']]]
     if logarithmic_labels == True:
         y_train = city_data['total_cases_LOG']
@@ -97,7 +151,7 @@ for id_city in features.city.unique():
     n_splits = 5 # TimeSeriesSplits number of splits
     
     # We train a selection of models
-    reg_list = ['KNN']#['RandomForest','KNN','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
+    reg_list = ['RandomForest','KNN','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
     model = {};
     model_scores = {};
     for model_name in reg_list:
@@ -158,6 +212,9 @@ for id_city in features.city.unique():
     #city_models[id_city]['meta'] = meta;
     city_models[id_city]['meta_sub'] = model;
     city_models[id_city]['meta_sub_scores'] = model_scores;
+    city_models[id_city]['scaler_poly'] = scaler_poly;
+    city_models[id_city]['feature_extractor'] = feature_extractor;
+    city_models[id_city]['poly_sorted_features'] = sorted_features;
     print('Finisthed with city: {}'.format(id_city))
 print('Training finished!')
 
@@ -188,14 +245,27 @@ if feature_selection == True:
 output_df = pd.DataFrame(columns = ['city', 'year', 'weekofyear', 'total_cases'])
 outcome = []
 for i_row in x_test_real.index:
+    id_city = extra_column.iloc[i_row]['city'];
     aux = x_test_real.iloc[i_row]
     x_aux = aux[[col for col in aux.index if col not in ['city','total_cases','total_cases_LOG','diff','pos_neg']]]
     x_aux = np.expand_dims(x_aux, axis=0)
     
+    # We extract poly-features for the city of such data entry.
+    aux_poly = city_models[id_city]['feature_extractor'].transform(city_models[id_city]['scaler_poly'].transform(x_aux), 'poly')
+    x_aux = pd.DataFrame(x_aux)
+    for i in range(n_poly):
+        x_aux['poly_{}'.format(i)] = aux_poly[0,city_models[id_city]['poly_sorted_features'].keys()[i]]
+        
+    
+
+    
+    
+
+    
     # We always use the model that produces minimum test score for each city.    
-    model_name = 'KNN';# min(city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'], key=city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'].get);
+    model_name = min(city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'], key=city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'].get);
     model_aux = city_models[extra_column.iloc[i_row]['city']]['meta_sub'][model_name]
-    print('**C:{}. M:{}. Test:{}'.format(extra_column.iloc[i_row]['city'],model_name,city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'][model_name]))
+    print('**C:{}. M:{}. Test:{}'.format(id_city,model_name,city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'][model_name]))
     if logarithmic_labels == True:
         y_aux = int(np.ceil(np.exp(model_aux.return_prediction(x_aux)[0])))
     else:
@@ -203,7 +273,7 @@ for i_row in x_test_real.index:
         
 
     output_df = output_df.append({   
-                          'city':         extra_column.iloc[i_row]['city'],
+                          'city':         id_city,
                           'year':        extra_column.iloc[i_row]['year'],#aux['year'],
                           'weekofyear':  extra_column.iloc[i_row]['weekofyear'],
                           'total_cases': y_aux
