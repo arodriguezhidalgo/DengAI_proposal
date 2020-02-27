@@ -1,4 +1,9 @@
 # DengAI_proposal
+v1.10:
+* Keeping only 5 features.
+* C:sj. M:Dense. Test:17.64572956206951
+* C:iq. M:Dense. Test:5.6923076923076925
+
 v1.9:
 * Keeping only 5 features.
 * In order to increase stability, we use 10 splits in TimeSeriesSplit.

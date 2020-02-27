@@ -157,84 +157,89 @@ for id_city in features.city.unique():
     n_splits = 10 # TimeSeriesSplits number of splits
     
     # We train a selection of models
-    reg_list = ['RandomForest','KNN','BayesianRidge','KernelRidge','LinearRegression', 'MLP'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
+    reg_list = ['Dense']#['RandomForest','KNN','BayesianRidge','KernelRidge','LinearRegression', 'MLP'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
     model = {};
     model_scores = {};
     for model_name in reg_list:
-        # Random Forest
-        model[model_name] = Regressors()
-        model[model_name].get_regressor(model_name)
-        model[model_name].get_TimeSeries_CV(score='neg_mean_absolute_error',n_splits = n_splits)
-        model[model_name].fit_model(x_train, y_train)
-    
+        if model_name != 'Dense':
+            model[model_name] = Regressors()
+            model[model_name].get_regressor(model_name)
+            model[model_name].get_TimeSeries_CV(score='neg_mean_absolute_error',n_splits = n_splits)
+            model[model_name].fit_model(x_train, y_train)
+
+        else:
+            # DNN
+            from ML_utils.NeuralNetwork import NeuralNetwork
+
+            model[model_name] = NeuralNetwork();
+            model[model_name].model([16, 16, 1], [5])
+            model[model_name].compile('Adam', lr=.1, loss_list='mae')
+            model[model_name].fit_model(x_train, y_train, len(x_train), 200)
+
         y_pred_train = model[model_name].return_prediction(x_train)
         y_pred_test  = model[model_name].return_prediction(x_test)
-    
+
         from sklearn.metrics import mean_absolute_error
         if logarithmic_labels == True:
             model_scores[model_name] = model[model_name].plot_results(np.exp(y_test), np.exp(y_pred_test), mean_absolute_error, verbose);
         else:
             model_scores[model_name] = model[model_name].plot_results(y_test, y_pred_test, mean_absolute_error, verbose)
-            
-        if verbose == True: 
+
+        if verbose == True:
             plt.title(model_name);
+
     
-    '''
-    Using the previous models we train a meta-Regressor, which we hope it produces
-    better results as a combination of the previous systems.
-    '''
-    y_pred_train = np.zeros_like(y_train, dtype=float)
-    y_pred_test = np.zeros_like(y_test, dtype=float)
-    for model_name in reg_list:
-        y_pred_train += model[model_name].return_prediction(x_train)
-        y_pred_test  += model[model_name].return_prediction(x_test)
-    
-    y_pred_train /= len(reg_list);
-    y_pred_test /= len(reg_list);
-    if logarithmic_labels == True:
-        print('Train error: {}'.format(mean_absolute_error(np.exp(y_train), np.exp(y_pred_train))))
-        print('Test error: {}'.format(mean_absolute_error(np.exp(y_test), np.exp(y_pred_test))))
-        if verbose == True:
-            plt.subplot(211)
-            plt.plot(np.exp(y_pred_train))
-            plt.plot(np.exp(y_train))
-            plt.subplot(212)
-            plt.plot(np.exp(y_pred_test))
-            plt.plot(np.exp(y_test))
-    else:
-        print('Train error: {}'.format(mean_absolute_error(y_train, y_pred_train)))
-        print('Test error: {}'.format(mean_absolute_error(y_test, y_pred_test)))
-        if verbose == True:
-            plt.subplot(211)
-            plt.plot(y_pred_train)
-            plt.plot(y_train)
-            plt.subplot(212)
-            plt.plot(y_pred_test)
-            plt.plot(y_test)
 
-    # Once we reach this point, we train the model using the whole dataset.
-    x_train = city_data[[col for col in city_data.columns if col not in ['total_cases', 'total_cases_LOG', 'diff', 'pos_neg']]];
-    if logarithmic_labels == True:
-        y_train = city_data['total_cases_LOG']
-    else:
-        y_train = city_data['total_cases']
-    #model[model_name].get_regressor(model_name, model[model_name].model.best_params_)
-    end_model = Regressors(CV = False)
-    end_model.get_regressor(model_name, model[model_name].model.best_params_)
-    end_model.clf.fit(x_train, y_train)
-    model[model_name] = end_model;
+        if logarithmic_labels == True:
+            print('Train error: {}'.format(mean_absolute_error(np.exp(y_train), np.exp(y_pred_train))))
+            print('Test error: {}'.format(mean_absolute_error(np.exp(y_test), np.exp(y_pred_test))))
+            if verbose == True:
+                plt.subplot(211)
+                plt.plot(np.exp(y_pred_train))
+                plt.plot(np.exp(y_train))
+                plt.subplot(212)
+                plt.plot(np.exp(y_pred_test))
+                plt.plot(np.exp(y_test))
+        else:
+            print('Train error: {}'.format(mean_absolute_error(y_train, y_pred_train)))
+            print('Test error: {}'.format(mean_absolute_error(y_test, y_pred_test)))
+            if verbose == True:
+                plt.subplot(211)
+                plt.plot(y_pred_train)
+                plt.plot(y_train)
+                plt.subplot(212)
+                plt.plot(y_pred_test)
+                plt.plot(y_test)
 
-    city_models[id_city] = {};
-    #city_models[id_city]['meta'] = meta;
-    city_models[id_city]['meta_sub'] = model;
-    city_models[id_city]['meta_sub_scores'] = model_scores;
-    city_models[id_city]['feature_vector'] = feature_vector;
+        # Once we reach this point, we train the model using the whole dataset.
+        x_train = city_data[[col for col in city_data.columns if col not in ['total_cases', 'total_cases_LOG', 'diff', 'pos_neg']]];
+        if logarithmic_labels == True:
+            y_train = city_data['total_cases_LOG']
+        else:
+            y_train = city_data['total_cases']
+        #model[model_name].get_regressor(model_name, model[model_name].model.best_params_)
+        if model_name != 'Dense':
+            end_model = Regressors(CV = False)
+            end_model.get_regressor(model_name, model[model_name].model.best_params_)
+            end_model.clf.fit(x_train, y_train)
+            model[model_name] = end_model;
+        else:
+            model[model_name].compile('Adam', lr=.1, loss_list='mae')
+            model[model_name].fit_model(x_train, y_train, len(x_train), 200)
 
-    if poly_features == True:
-        city_models[id_city]['scaler_poly'] = scaler_poly;
-        city_models[id_city]['feature_extractor'] = feature_extractor;
-        city_models[id_city]['poly_sorted_features'] = sorted_features;
-    print('Finisthed with city: {}'.format(id_city))
+
+
+        city_models[id_city] = {};
+        #city_models[id_city]['meta'] = meta;
+        city_models[id_city]['meta_sub'] = model;
+        city_models[id_city]['meta_sub_scores'] = model_scores;
+        city_models[id_city]['feature_vector'] = feature_vector;
+
+        if poly_features == True:
+            city_models[id_city]['scaler_poly'] = scaler_poly;
+            city_models[id_city]['feature_extractor'] = feature_extractor;
+            city_models[id_city]['poly_sorted_features'] = sorted_features;
+        print('Finisthed with city: {}'.format(id_city))
 print('Training finished!')
 
 x_test_real = pd.read_csv('data/dengue_features_test.csv')
