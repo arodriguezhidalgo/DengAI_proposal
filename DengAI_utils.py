@@ -55,4 +55,5 @@ def compute_correlation(city_input_data):
         rotation=45,
         horizontalalignment='right'
     );
+    plt.title('Correlation matrix')
     return correlation
