@@ -7,9 +7,11 @@ def read_data(data_file):
     data_structure = pd.read_csv(os.path.join('data',data_file))
     return data_structure
 
-
+n_top_features = 5;
 logarithmic_labels = False;
 feature_selection = True;
+poly_features = False;
+
 feature_vector = ['weekofyear',
                   'month',
                   'inverse_year',
@@ -76,45 +78,47 @@ for id_city in features.city.unique():
     from DengAI_utils import season
     city_data['season'] = city_data['month'].apply(season);
     
-    if feature_selection == True:        
-        city_data = city_data[feature_vector]
 
-    '''
-    We compute some polynomial features, since our analysis in jupyter showed
-    that this might produce features with stronger correlations respecting to
-    labels.
-    '''      
-    from ML_utils.FeatureExtraction import FeatureExtraction
-    feature_extractor = FeatureExtraction();
-    feature_extractor.polynomial(9);
-    feature_extractor.fit(city_data[[i for i in city_data.columns if i not in ['total_cases']]])
-    poly_feat = pd.DataFrame(feature_extractor.transform(city_data[[i for i in city_data.columns if i not in ['total_cases']]], 'poly'))
-    
-    poly_feat['total_cases'] = city_data['total_cases'].values;
-    '''
-    We get the correlation between the poly features and the labels. We keep 
-    the first five features and use them in our analysis.
-    '''
-    sorted_features = (poly_feat.corr()
-     .total_cases
-     .drop('total_cases') # don't compare with myself
-     .sort_values(ascending=False));
-    
-    n_poly = 1; # N of poly features to keep.
-    from sklearn.preprocessing import MinMaxScaler
-    scaler_poly = MinMaxScaler()
-    aux = scaler_poly.fit_transform( poly_feat[sorted_features[:n_poly].keys()])
-    
-    for i in range(n_poly):
-        city_data['poly_{}'.format(i)] = aux[:,i]
-        
-    # We then recompute correlation and keep only top features.
-    n_features = 10;
-    top_features = (city_data.corr()
+
+
+    if poly_features == True:
+        '''
+        We compute some polynomial features, since our analysis in jupyter showed
+        that this might produce features with stronger correlations respecting to
+        labels.
+        '''
+        city_data = city_data[feature_vector]
+        from ML_utils.FeatureExtraction import FeatureExtraction
+        feature_extractor = FeatureExtraction();
+        feature_extractor.polynomial(9);
+        feature_extractor.fit(city_data[[i for i in city_data.columns if i not in ['total_cases']]])
+        poly_feat = pd.DataFrame(feature_extractor.transform(city_data[[i for i in city_data.columns if i not in ['total_cases']]], 'poly'))
+
+        poly_feat['total_cases'] = city_data['total_cases'].values;
+        '''
+        We get the correlation between the poly features and the labels. We keep 
+        the first five features and use them in our analysis.
+        '''
+        sorted_features = (poly_feat.corr()
          .total_cases
          .drop('total_cases') # don't compare with myself
-         .sort_values(ascending=False))[0:n_features]
-    top_features.keys()  
+         .sort_values(ascending=False));
+
+        n_poly = 1; # N of poly features to keep.
+        from sklearn.preprocessing import MinMaxScaler
+        scaler_poly = MinMaxScaler()
+        aux = scaler_poly.fit_transform( poly_feat[sorted_features[:n_poly].keys()])
+
+        for i in range(n_poly):
+            city_data['poly_{}'.format(i)] = aux[:,i]
+
+        # We then recompute correlation and keep only top features.
+        n_features = 10;
+        top_features = (city_data.corr()
+             .total_cases
+             .drop('total_cases') # don't compare with myself
+             .sort_values(ascending=False))[0:n_features]
+        top_features.keys()
     
     
 
@@ -124,10 +128,12 @@ for id_city in features.city.unique():
     city_data['total_cases_LOG'][city_data['total_cases_LOG'] <0 ] =0
 
     from DengAI_utils import compute_correlation
-    compute_correlation(city_data);
+    corr_matrix = compute_correlation(city_data);
 
-
-
+    sorted_features = corr_matrix['total_cases'].drop(['total_cases_LOG']).sort_values(ascending=False)
+    feature_vector = sorted_features.keys()[range(n_top_features+1)]# +1 since we are including total_cases.
+    if feature_selection == True:
+        city_data = city_data[feature_vector]
 
     
     '''
@@ -151,7 +157,7 @@ for id_city in features.city.unique():
     n_splits = 5 # TimeSeriesSplits number of splits
     
     # We train a selection of models
-    reg_list = ['RandomForest','KNN','BayesianRidge','KernelRidge','LinearRegression', 'MLP','GradientBoosting'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
+    reg_list = ['KNN']#['RandomForest','KNN','BayesianRidge','KernelRidge','LinearRegression', 'MLP','GradientBoosting'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
     model = {};
     model_scores = {};
     for model_name in reg_list:
@@ -212,9 +218,12 @@ for id_city in features.city.unique():
     #city_models[id_city]['meta'] = meta;
     city_models[id_city]['meta_sub'] = model;
     city_models[id_city]['meta_sub_scores'] = model_scores;
-    city_models[id_city]['scaler_poly'] = scaler_poly;
-    city_models[id_city]['feature_extractor'] = feature_extractor;
-    city_models[id_city]['poly_sorted_features'] = sorted_features;
+    city_models[id_city]['feature_vector'] = feature_vector;
+
+    if poly_features == True:
+        city_models[id_city]['scaler_poly'] = scaler_poly;
+        city_models[id_city]['feature_extractor'] = feature_extractor;
+        city_models[id_city]['poly_sorted_features'] = sorted_features;
     print('Finisthed with city: {}'.format(id_city))
 print('Training finished!')
 
@@ -233,9 +242,9 @@ x_test_real['day'] = x_test_real.apply(lambda x: int(x['week_start_date'][8:10])
 x_test_real['inverse_year'] = x_test_real['year'].apply(lambda x: 1/x);
 x_test_real['season'] = x_test_real['month'].apply(season);
 
-if feature_selection == True:        
-    extra_column = x_test_real[['year','weekofyear','city']];
-    x_test_real = x_test_real[[i for i in feature_vector if i not in ['total_cases']]]
+extra_column = x_test_real[['year','weekofyear','city']];
+#if feature_selection == True:
+#    x_test_real = x_test_real[[i for i in feature_vector if i not in ['total_cases']]]
 
 
 
@@ -246,15 +255,18 @@ output_df = pd.DataFrame(columns = ['city', 'year', 'weekofyear', 'total_cases']
 outcome = []
 for i_row in x_test_real.index:
     id_city = extra_column.iloc[i_row]['city'];
-    aux = x_test_real.iloc[i_row]
+
+
+    aux = x_test_real[city_models[id_city]['feature_vector'].drop('total_cases')].iloc[i_row]; #x_test_real.iloc[i_row]
     x_aux = aux[[col for col in aux.index if col not in ['city','total_cases','total_cases_LOG','diff','pos_neg']]]
     x_aux = np.expand_dims(x_aux, axis=0)
-    
-    # We extract poly-features for the city of such data entry.
-    aux_poly = city_models[id_city]['feature_extractor'].transform(city_models[id_city]['scaler_poly'].transform(x_aux), 'poly')
-    x_aux = pd.DataFrame(x_aux)
-    for i in range(n_poly):
-        x_aux['poly_{}'.format(i)] = aux_poly[0,city_models[id_city]['poly_sorted_features'].keys()[i]]
+
+    if poly_features == True:
+        # We extract poly-features for the city of such data entry.
+        aux_poly = city_models[id_city]['feature_extractor'].transform(city_models[id_city]['scaler_poly'].transform(x_aux), 'poly')
+        x_aux = pd.DataFrame(x_aux)
+        for i in range(n_poly):
+            x_aux['poly_{}'.format(i)] = aux_poly[0,city_models[id_city]['poly_sorted_features'].keys()[i]]
         
     
 

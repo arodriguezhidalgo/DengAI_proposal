@@ -36,24 +36,25 @@ def context_extractor(data_structure):
 
 
 # We study each feature independently and how it relates with the rest
-def compute_correlation(city_input_data):
+def compute_correlation(city_input_data, verbose=False):
     correlation = city_input_data.corr()
     import seaborn as sns
     import matplotlib.pyplot as plt
     
-    
-    fig, ax = plt.subplots(figsize=(15,15)) 
-    ax = sns.heatmap(
-        correlation, 
-        vmin=-1, vmax=1, center=0,
-        cmap=sns.diverging_palette(20, 220, n=200),
-        square=True,
-        ax = ax
-    )
-    ax.set_xticklabels(
-        ax.get_xticklabels(),
-        rotation=45,
-        horizontalalignment='right'
-    );
-    plt.title('Correlation matrix')
+
+    if verbose == True:
+        fig, ax = plt.subplots(figsize=(15,15))
+        ax = sns.heatmap(
+            correlation,
+            vmin=-1, vmax=1, center=0,
+            cmap=sns.diverging_palette(20, 220, n=200),
+            square=True,
+            ax = ax
+        )
+        ax.set_xticklabels(
+            ax.get_xticklabels(),
+            rotation=45,
+            horizontalalignment='right'
+        );
+        plt.title('Correlation matrix')
     return correlation

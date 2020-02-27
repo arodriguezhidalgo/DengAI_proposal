@@ -1,4 +1,10 @@
 # DengAI_proposal
+v1.6:
+* Explicit control of polynomial features.
+* We force the usage of KNN.
+  * C:sj. M:KNN. Test:21.701063829787238
+  * C:iq. M:KNN. Test:4.818681318681319
+  
 v1.5c:
 * Working on the notebook to make it look more appealing.
 
