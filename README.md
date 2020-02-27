@@ -1,4 +1,11 @@
 # DengAI_proposal
+v1.7:
+* Retrain using 100% of the dataset.
+* Forced to use SVR.
+  * C:sj. M:SVR. Test:18.063648014200677
+  * C:iq. M:SVR. Test:3.378613199666314
+  * DRIVENDATA: 26.7091
+  
 v1.6:
 * Explicit control of polynomial features.
 * We force the usage of KNN.

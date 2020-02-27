@@ -157,7 +157,7 @@ for id_city in features.city.unique():
     n_splits = 5 # TimeSeriesSplits number of splits
     
     # We train a selection of models
-    reg_list = ['KNN']#['RandomForest','KNN','BayesianRidge','KernelRidge','LinearRegression', 'MLP','GradientBoosting'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
+    reg_list = ['SVR']#['RandomForest','KNN','BayesianRidge','KernelRidge','LinearRegression', 'MLP','GradientBoosting'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
     model = {};
     model_scores = {};
     for model_name in reg_list:
@@ -212,8 +212,18 @@ for id_city in features.city.unique():
             plt.plot(y_pred_test)
             plt.plot(y_test)
 
+    # Once we reach this point, we train the model using the whole dataset.
+    x_train = city_data[[col for col in city_data.columns if col not in ['total_cases', 'total_cases_LOG', 'diff', 'pos_neg']]];
+    if logarithmic_labels == True:
+        y_train = city_data['total_cases_LOG']
+    else:
+        y_train = city_data['total_cases']
+    #model[model_name].get_regressor(model_name, model[model_name].model.best_params_)
+    end_model = Regressors(CV = False)
+    end_model.get_regressor(model_name, model[model_name].model.best_params_)
+    end_model.clf.fit(x_train, y_train)
+    model[model_name] = end_model;
 
-    
     city_models[id_city] = {};
     #city_models[id_city]['meta'] = meta;
     city_models[id_city]['meta_sub'] = model;
