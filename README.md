@@ -1,6 +1,14 @@
 # DengAI_proposal
+v1.8:
+* Retrain using 100% of the dataset.
+* Keeping only 6 features.
+* Forced to use SVR.
+  * C:sj. M:SVR. Test:18.063648014200677
+  * C:iq. M:SVR. Test:3.297256928650173
+
 v1.7:
 * Retrain using 100% of the dataset.
+* Keeping only 5 features.
 * Forced to use SVR.
   * C:sj. M:SVR. Test:18.063648014200677
   * C:iq. M:SVR. Test:3.378613199666314
