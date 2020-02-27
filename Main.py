@@ -154,10 +154,10 @@ for id_city in features.city.unique():
     y_train = y_train[:i_test].values
     
     from ML_utils.Regressors import Regressors
-    n_splits = 6 # TimeSeriesSplits number of splits
+    n_splits = 10 # TimeSeriesSplits number of splits
     
     # We train a selection of models
-    reg_list = ['SVR']#['RandomForest','KNN','BayesianRidge','KernelRidge','LinearRegression', 'MLP','GradientBoosting'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
+    reg_list = ['RandomForest','KNN','BayesianRidge','KernelRidge','LinearRegression', 'MLP'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
     model = {};
     model_scores = {};
     for model_name in reg_list:

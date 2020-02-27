@@ -1,10 +1,12 @@
 # DengAI_proposal
+v1.9:
+* Keeping only 5 features.
+* In order to increase stability, we use 10 splits in TimeSeriesSplit.
+  * C:sj. M:RandomForest. Test:18.98517824723589
+  * C:iq. M:RandomForest. Test:4.144047298319872
+
 v1.8:
 * Retrain using 100% of the dataset.
-* Keeping only 6 features.
-* Forced to use SVR.
-  * C:sj. M:SVR. Test:18.063648014200677
-  * C:iq. M:SVR. Test:3.297256928650173
 
 v1.7:
 * Retrain using 100% of the dataset.
