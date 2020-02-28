@@ -124,7 +124,6 @@ for id_city in features.city.unique():
     
 
     
-    # We generate logarithmic labels, which might be useful to model seasonality
     city_data['total_cases_LOG'] = np.log(city_data['total_cases'])
     city_data['total_cases_LOG'][city_data['total_cases_LOG'] <0 ] =0
 
@@ -170,7 +169,7 @@ for id_city in features.city.unique():
     n_splits = 10 # TimeSeriesSplits number of splits
     
     # We train a selection of models
-    reg_list = ['Dense']#['RandomForest','KNN','BayesianRidge','KernelRidge','LinearRegression', 'MLP'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
+    reg_list = ['RandomForest','KNN','BayesianRidge','KernelRidge','LinearRegression', 'MLP','Dense'];#['RandomForest','KNN','GradientBoosting','AdaBoost','BayesianRidge','KernelRidge','LinearRegression'];
     model = {};
     model_scores = {};
     for model_name in reg_list:
@@ -194,11 +193,20 @@ for id_city in features.city.unique():
         from sklearn.metrics import mean_absolute_error
         if scale_data == True:
             
-            y_pred_train = np.squeeze(scaler_y.inverse_transform(model[model_name].return_prediction(x_train)))
+            y_pred_train = model[model_name].return_prediction(x_train);
+            y_pred_test = model[model_name].return_prediction(x_test);
+            if len(y_pred_train.shape) == 1:
+                y_pred_train = np.expand_dims(y_pred_train, axis=1);
+                y_pred_test = np.expand_dims(y_pred_test, axis=1);
+            
+            
+            
+            y_pred_train = np.squeeze(scaler_y.inverse_transform(y_pred_train))
+            y_pred_test  = np.squeeze(scaler_y.inverse_transform(y_pred_test))
+            
             plt.plot(y_train)
             plt.plot(model[model_name].return_prediction(x_train))
             plt.show()
-            y_pred_test  = np.squeeze(scaler_y.inverse_transform(model[model_name].return_prediction(x_test)))
             plt.plot(y_test)
             plt.plot(model[model_name].return_prediction(x_test))
             plt.show()
@@ -320,8 +328,12 @@ for i_row in x_test_real.index:
     model_name = min(city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'], key=city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'].get);
     model_aux = city_models[extra_column.iloc[i_row]['city']]['meta_sub'][model_name]
     print('**C:{}. M:{}. Test:{}'.format(id_city,model_name,city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'][model_name]))
-    if scale_data == True:
-        y_aux = int(np.ceil(scaler_y.inverse_transform(model_aux.return_prediction(x_aux))))
+    if scale_data == True:        
+        y_pred_aux = model_aux.return_prediction(x_aux);
+        if len(y_pred_aux.shape) == 1:
+            y_pred_aux = np.expand_dims(y_pred_aux, axis=1);
+        y_aux = int(np.ceil(scaler_y.inverse_transform(y_pred_aux)))
+        
     else:
         y_aux = int(np.ceil(model_aux.return_prediction(x_aux)[0]))
         

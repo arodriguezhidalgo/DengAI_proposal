@@ -1,4 +1,7 @@
 # DengAI_proposal
+v1.12:
+* Code repaired so every model is able to work using scaling.
+
 v1.11:
 * I need to include the scaler for models such as the SVR, MLP and Dense. I should also scale the target variable.
 * Removed logarithmic labelling because is not being used.
