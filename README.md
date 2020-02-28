@@ -1,8 +1,14 @@
 # DengAI_proposal
+v1.11:
+* I need to include the scaler for models such as the SVR, MLP and Dense. I should also scale the target variable.
+* Removed logarithmic labelling because is not being used.
+* Totally implemented the DNN from ML_utils and adapted to work in Main.py.
+
 v1.10:
 * Keeping only 5 features.
-* C:sj. M:Dense. Test:17.64572956206951
-* C:iq. M:Dense. Test:5.6923076923076925
+  * C:sj. M:Dense. Test:17.64572956206951
+  * C:iq. M:Dense. Test:5.6923076923076925
+  * DRIVENDATA: 27.8894
 
 v1.9:
 * Keeping only 5 features.

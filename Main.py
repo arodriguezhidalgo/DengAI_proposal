@@ -11,6 +11,7 @@ n_top_features = 5;
 logarithmic_labels = False;
 feature_selection = True;
 poly_features = False;
+scale_data = True;
 
 feature_vector = ['weekofyear',
                   'month',
@@ -141,10 +142,7 @@ for id_city in features.city.unique():
     keep some of the data out of the validation pool for testing purposes.
     '''   
     x_train = city_data[[col for col in city_data.columns if col not in ['total_cases','total_cases_LOG','diff','pos_neg']]]
-    if logarithmic_labels == True:
-        y_train = city_data['total_cases_LOG']
-    else: 
-        y_train = city_data['total_cases']
+    y_train = city_data['total_cases']
         
     i_test = int(np.round(len(x_train.index))*.9); # 10 per cent used for test in any dataset
     
@@ -152,6 +150,21 @@ for id_city in features.city.unique():
     y_test = y_train[i_test:].values
     x_train = x_train.iloc[:i_test]
     y_train = y_train[:i_test].values
+    
+    '''
+    We can scale data, which is useful for some of the models.
+    '''
+    if scale_data == True:
+        from sklearn.preprocessing import StandardScaler, MinMaxScaler
+        scaler_x = MinMaxScaler()
+        scaler_y = MinMaxScaler()
+        x_train = scaler_x.fit_transform(x_train);
+        y_train = np.squeeze(scaler_y.fit_transform(np.expand_dims(y_train, axis=1)));
+        
+        x_test = scaler_x.transform(x_test);
+        y_test = np.squeeze(scaler_y.transform(np.expand_dims(y_test, axis=1)));
+        
+    
     
     from ML_utils.Regressors import Regressors
     n_splits = 10 # TimeSeriesSplits number of splits
@@ -170,53 +183,61 @@ for id_city in features.city.unique():
         else:
             # DNN
             from ML_utils.NeuralNetwork import NeuralNetwork
-
-            model[model_name] = NeuralNetwork();
-            model[model_name].model([16, 16, 1], [5])
-            model[model_name].compile('Adam', lr=.1, loss_list='mae')
-            model[model_name].fit_model(x_train, y_train, len(x_train), 200)
-
-        y_pred_train = model[model_name].return_prediction(x_train)
-        y_pred_test  = model[model_name].return_prediction(x_test)
+            n_epochs = 2000;
+            lr = .01;
+            model[model_name] = NeuralNetwork(133388);
+            model[model_name].model([100, 1], [n_top_features],residual=True)
+            model[model_name].compile('Adam', lr=lr, loss_list='mae')
+            model[model_name].fit_model(x_train, y_train, len(x_train), n_epochs, validation_split=.1)
+            model[model_name].plot_history()
 
         from sklearn.metrics import mean_absolute_error
-        if logarithmic_labels == True:
-            model_scores[model_name] = model[model_name].plot_results(np.exp(y_test), np.exp(y_pred_test), mean_absolute_error, verbose);
+        if scale_data == True:
+            
+            y_pred_train = np.squeeze(scaler_y.inverse_transform(model[model_name].return_prediction(x_train)))
+            plt.plot(y_train)
+            plt.plot(model[model_name].return_prediction(x_train))
+            plt.show()
+            y_pred_test  = np.squeeze(scaler_y.inverse_transform(model[model_name].return_prediction(x_test)))
+            plt.plot(y_test)
+            plt.plot(model[model_name].return_prediction(x_test))
+            plt.show()
+            model_scores[model_name] = model[model_name].plot_results(np.squeeze(scaler_y.inverse_transform(np.expand_dims(y_test,axis=1))),
+                                                                      y_pred_test, mean_absolute_error, verbose=False)
+            print('Train error: {}'.format(mean_absolute_error(np.squeeze(scaler_y.inverse_transform(np.expand_dims(y_train,axis=1))),
+                                                               y_pred_train)))
+            print('Test error: {}'.format(mean_absolute_error(np.squeeze(scaler_y.inverse_transform(np.expand_dims(y_test,axis=1))),
+                                                              y_pred_test)))    
+            
         else:
+            y_pred_train = model[model_name].return_prediction(x_train)
+            y_pred_test  = model[model_name].return_prediction(x_test)
             model_scores[model_name] = model[model_name].plot_results(y_test, y_pred_test, mean_absolute_error, verbose)
+            print('Train error: {}'.format(mean_absolute_error(y_train, y_pred_train)))
+            print('Test error: {}'.format(mean_absolute_error(y_test, y_pred_test)))    
+
 
         if verbose == True:
             plt.title(model_name);
 
     
 
-        if logarithmic_labels == True:
-            print('Train error: {}'.format(mean_absolute_error(np.exp(y_train), np.exp(y_pred_train))))
-            print('Test error: {}'.format(mean_absolute_error(np.exp(y_test), np.exp(y_pred_test))))
-            if verbose == True:
-                plt.subplot(211)
-                plt.plot(np.exp(y_pred_train))
-                plt.plot(np.exp(y_train))
-                plt.subplot(212)
-                plt.plot(np.exp(y_pred_test))
-                plt.plot(np.exp(y_test))
-        else:
-            print('Train error: {}'.format(mean_absolute_error(y_train, y_pred_train)))
-            print('Test error: {}'.format(mean_absolute_error(y_test, y_pred_test)))
-            if verbose == True:
-                plt.subplot(211)
-                plt.plot(y_pred_train)
-                plt.plot(y_train)
-                plt.subplot(212)
-                plt.plot(y_pred_test)
-                plt.plot(y_test)
+        
+        if verbose == True:
+            plt.subplot(211)
+            plt.plot(y_pred_train)
+            plt.plot(y_train)
+            plt.subplot(212)
+            plt.plot(y_pred_test)
+            plt.plot(y_test)
 
         # Once we reach this point, we train the model using the whole dataset.
         x_train = city_data[[col for col in city_data.columns if col not in ['total_cases', 'total_cases_LOG', 'diff', 'pos_neg']]];
-        if logarithmic_labels == True:
-            y_train = city_data['total_cases_LOG']
-        else:
-            y_train = city_data['total_cases']
+        y_train = city_data['total_cases']
+        
+        if scale_data == True:
+            x_train = scaler_x.transform(x_train);
+            y_train = np.squeeze(scaler_y.transform(np.expand_dims(y_train, axis=1)));
         #model[model_name].get_regressor(model_name, model[model_name].model.best_params_)
         if model_name != 'Dense':
             end_model = Regressors(CV = False)
@@ -224,8 +245,8 @@ for id_city in features.city.unique():
             end_model.clf.fit(x_train, y_train)
             model[model_name] = end_model;
         else:
-            model[model_name].compile('Adam', lr=.1, loss_list='mae')
-            model[model_name].fit_model(x_train, y_train, len(x_train), 200)
+            model[model_name].compile('Adam', lr=lr, loss_list='mae')
+            model[model_name].fit_model(x_train, y_train, len(x_train), n_epochs)
 
 
 
@@ -234,6 +255,8 @@ for id_city in features.city.unique():
         city_models[id_city]['meta_sub'] = model;
         city_models[id_city]['meta_sub_scores'] = model_scores;
         city_models[id_city]['feature_vector'] = feature_vector;
+        city_models[id_city]['standard_scaler'] = {'scaler_x' : scaler_x,
+                                                   'scaler_y' : scaler_y};
 
         if poly_features == True:
             city_models[id_city]['scaler_poly'] = scaler_poly;
@@ -283,7 +306,11 @@ for i_row in x_test_real.index:
         for i in range(n_poly):
             x_aux['poly_{}'.format(i)] = aux_poly[0,city_models[id_city]['poly_sorted_features'].keys()[i]]
         
-    
+    if scale_data == True:
+        scaler_x = city_models[id_city]['standard_scaler']['scaler_x'];
+        scaler_y = city_models[id_city]['standard_scaler']['scaler_y'];
+        x_aux = scaler_x.transform(x_aux);
+        
 
     
     
@@ -293,8 +320,8 @@ for i_row in x_test_real.index:
     model_name = min(city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'], key=city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'].get);
     model_aux = city_models[extra_column.iloc[i_row]['city']]['meta_sub'][model_name]
     print('**C:{}. M:{}. Test:{}'.format(id_city,model_name,city_models[extra_column.iloc[i_row]['city']]['meta_sub_scores'][model_name]))
-    if logarithmic_labels == True:
-        y_aux = int(np.ceil(np.exp(model_aux.return_prediction(x_aux)[0])))
+    if scale_data == True:
+        y_aux = int(np.ceil(scaler_y.inverse_transform(model_aux.return_prediction(x_aux))))
     else:
         y_aux = int(np.ceil(model_aux.return_prediction(x_aux)[0]))
         
