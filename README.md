@@ -1,4 +1,12 @@
 # DengAI_proposal
+Project in development. The task consists of estimating the number of denge infections in two different cities using the data available at [DrivenDATA](https://www.drivendata.org/competitions/44/dengai-predicting-disease-spread/).
+
+The python code here can be useful for other projects related with temporal sequence analysis, although no specific techniques such as ARIMA/ARMA nor (Facebook) Prophet are being used.
+
+## Versioning
+v1.13:
+* Cleaning the notebook.
+
 v1.12:
 * Code repaired so every model is able to work using scaling.
 
