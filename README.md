@@ -4,6 +4,9 @@ Project in development. The task consists of estimating the number of denge infe
 The python code here can be useful for other projects related with temporal sequence analysis, although no specific techniques such as ARIMA/ARMA nor (Facebook) Prophet are being used.
 
 ## Versioning
+v1.14:
+* Included new time series analysis.
+
 v1.13:
 * Cleaning the notebook.
 
