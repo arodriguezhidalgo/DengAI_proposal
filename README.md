@@ -4,6 +4,9 @@ Project in development. The task consists of estimating the number of denge infe
 The python code here can be useful for other projects related with temporal sequence analysis, although no specific techniques such as ARIMA/ARMA nor (Facebook) Prophet are being used.
 
 ## Versioning
+v1.21:
+* Forecasting was divided into modelling seasonality + anomalies. Such anomalies are modelled with an anomaly detection algorithm, which in the end contributes with seasonality to produce the output signal.
+
 v1.20:
 * Inspired in linear models.
 
